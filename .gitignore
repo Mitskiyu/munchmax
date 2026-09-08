@@ -1,0 +1,12 @@
+# go
+bin/
+tmp/
+
+# dev
+.direnv/
+temp/
+data/
+
+# env
+.env
+.env.local
