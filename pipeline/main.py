@@ -21,6 +21,7 @@ nwr["amenity"~"^(restaurant|fast_food|cafe)$"](area.city);
 out center tags;
 """
 
+
 def fetch(attempts=2, backoff=10):
     for attempt in range(attempts):
         for url in OVERPASS_URLS:
@@ -87,11 +88,11 @@ def store(rows):
             cur.executemany(
                 """
                 INSERT INTO restaurants (
-                    id, name, kind, cuisines, street, housenumber,
+                    osm_id, name, kind, cuisines, street, housenumber,
                     postcode, city, website, phone, opening_hours, lat, lon
                 )
                 VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
-                ON CONFLICT (id) DO UPDATE SET
+                ON CONFLICT (osm_id) DO UPDATE SET
                     name          = EXCLUDED.name,
                     kind          = EXCLUDED.kind,
                     cuisines      = EXCLUDED.cuisines,
@@ -103,8 +104,7 @@ def store(rows):
                     phone         = EXCLUDED.phone,
                     opening_hours = EXCLUDED.opening_hours,
                     lat           = EXCLUDED.lat,
-                    lon           = EXCLUDED.lon,
-                    updated_at    = now()
+                    lon           = EXCLUDED.lon
                 """,
                 rows,
             )
