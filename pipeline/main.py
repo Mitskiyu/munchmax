@@ -1,13 +1,19 @@
 import os
-
+import time
 import httpx
 import psycopg
 from dotenv import load_dotenv
 
 load_dotenv()
 
-OVERPASS_URL = "https://overpass-api.de/api/interpreter"
+OVERPASS_URLS = [
+    "https://overpass-api.de/api/interpreter",
+    "https://overpass.kumi.systems/api/interpreter",
+    "https://overpass.private.coffee/api/interpreter",
+    "https://overpass.osm.jp/api/interpreter",
+]
 
+HEADERS = {"User-Agent": "munchmax/0.1 (github.com/Mitskiyu/munchmax)"}
 QUERY = """
 [out:json][timeout:90];
 area["name"="Den Haag"]["admin_level"=8]->.city;
@@ -15,16 +21,29 @@ nwr["amenity"~"^(restaurant|fast_food|cafe)$"](area.city);
 out center tags;
 """
 
+def fetch(attempts=2, backoff=10):
+    for attempt in range(attempts):
+        for url in OVERPASS_URLS:
+            try:
+                r = httpx.post(url, data={"data": QUERY}, headers=HEADERS, timeout=120)
+            except httpx.HTTPError as e:
+                print(f"{url} unreachable: {e}")
+                continue
 
-def fetch():
-    r = httpx.post(
-        OVERPASS_URL,
-        data={"data": QUERY},
-        headers={"User-Agent": "munchmax/0.1 (github.com/Mitskiyu/munchmax)"},
-        timeout=120,
-    )
-    r.raise_for_status()
-    return r.json()["elements"]
+            if r.status_code == 429 or r.status_code >= 500:
+                print(f"{url} returned HTTP {r.status_code}, trying next mirror")
+                continue
+
+            r.raise_for_status()
+            data = r.json()
+            return data["elements"]
+
+        if attempt < attempts - 1:
+            wait = backoff * (attempt + 1)
+            print(f"all mirrors failed, waiting {wait}s before retrying")
+            time.sleep(wait)
+
+    raise RuntimeError("failed to fetch data")
 
 
 def to_row(element):
