@@ -1,0 +1,110 @@
+openapi: 3.1.0
+info:
+  title: munchmax
+  version: 0.0.1
+paths:
+  /restaurants:
+    get:
+      operationId: listRestaurants
+      parameters:
+        - name: after
+          description: A cursor for use in pagination
+          in: query
+          required: false
+          schema:
+            type: string
+            format: uuid
+
+        - name: limit
+          description: A limit on the number of objects to be returned
+          in: query
+          required: false
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 100
+            default: 20
+
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                properties:
+                  data:
+                    items:
+                      $ref: "#/components/schemas/restaurant"
+                    type: array
+                type: object
+                required:
+                  - data
+
+        "400":
+          description: Invalid cursor or limit parameter
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/error"
+
+        "500":
+          description: Unexpected server error
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/error"
+
+components:
+  schemas:
+    restaurant:
+      type: object
+      required:
+        [
+          id,
+          name,
+          kind,
+          cuisines,
+          street,
+          housenumber,
+          postcode,
+          city,
+          website,
+          phone,
+          opening_hours,
+        ]
+      properties:
+        id:
+          type: string
+          format: uuid
+        name:
+          type: string
+        kind:
+          type: string
+        cuisines:
+          type: array
+          items:
+            type: string
+        street:
+          type: string
+        housenumber:
+          type: string
+        postcode:
+          type: string
+        city:
+          type: string
+        website:
+          type: string
+        phone:
+          type: string
+        opening_hours:
+          type: string
+
+    error:
+      type: object
+      required: [code, message]
+      properties:
+        code:
+          type: string
+          enum: [INVALID_CURSOR, INVALID_LIMIT, INTERNAL]
+        message:
+          type: string
