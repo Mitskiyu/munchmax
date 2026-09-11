@@ -13,9 +13,12 @@ import (
 	"munchmax/internal/database"
 	"munchmax/internal/restaurant"
 	"munchmax/internal/server"
+
+	"github.com/joho/godotenv"
 )
 
 func main() {
+	_ = godotenv.Load()
 	if err := run(getenv); err != nil {
 		log.Fatal(err)
 	}
