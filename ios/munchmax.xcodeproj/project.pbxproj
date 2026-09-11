@@ -10,6 +10,8 @@
 		6DF849B130549DD3000BB966 /* ContentView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6DF849AC30549DD3000BB966 /* ContentView.swift */; };
 		6DF849B230549DD3000BB966 /* munchmaxApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6DF849AE30549DD3000BB966 /* munchmaxApp.swift */; };
 		6DF849B330549DD3000BB966 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 6DF849AB30549DD3000BB966 /* Assets.xcassets */; };
+		6DF849C03054C751000BB966 /* Local.xcconfig in Resources */ = {isa = PBXBuildFile; fileRef = 6DF849BF3054C751000BB966 /* Local.xcconfig */; };
+		6DF849C43054C799000BB966 /* Local.xcconfig.example in Resources */ = {isa = PBXBuildFile; fileRef = 6DF849C33054C799000BB966 /* Local.xcconfig.example */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -18,6 +20,9 @@
 		6DF849AC30549DD3000BB966 /* ContentView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ContentView.swift; sourceTree = "<group>"; };
 		6DF849AD30549DD3000BB966 /* munchmax.xcodeproj */ = {isa = PBXFileReference; lastKnownFileType = "wrapper.pb-project"; path = munchmax.xcodeproj; sourceTree = "<group>"; };
 		6DF849AE30549DD3000BB966 /* munchmaxApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = munchmaxApp.swift; sourceTree = "<group>"; };
+		6DF849BB3054BF43000BB966 /* munchmax-Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist; path = "munchmax-Info.plist"; sourceTree = "<group>"; };
+		6DF849BF3054C751000BB966 /* Local.xcconfig */ = {isa = PBXFileReference; lastKnownFileType = text.xcconfig; path = Local.xcconfig; sourceTree = "<group>"; };
+		6DF849C33054C799000BB966 /* Local.xcconfig.example */ = {isa = PBXFileReference; lastKnownFileType = text; path = Local.xcconfig.example; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -34,8 +39,11 @@
 		6DF8499430549952000BB966 = {
 			isa = PBXGroup;
 			children = (
+				6DF849BB3054BF43000BB966 /* munchmax-Info.plist */,
 				6DF849AB30549DD3000BB966 /* Assets.xcassets */,
 				6DF849AC30549DD3000BB966 /* ContentView.swift */,
+				6DF849BF3054C751000BB966 /* Local.xcconfig */,
+				6DF849C33054C799000BB966 /* Local.xcconfig.example */,
 				6DF849AD30549DD3000BB966 /* munchmax.xcodeproj */,
 				6DF849AE30549DD3000BB966 /* munchmaxApp.swift */,
 				6DF8499E30549952000BB966 /* Products */,
@@ -123,6 +131,8 @@
 			isa = PBXResourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				6DF849C03054C751000BB966 /* Local.xcconfig in Resources */,
+				6DF849C43054C799000BB966 /* Local.xcconfig.example in Resources */,
 				6DF849B330549DD3000BB966 /* Assets.xcassets in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
@@ -144,6 +154,7 @@
 /* Begin XCBuildConfiguration section */
 		6DF849A630549953000BB966 /* Debug */ = {
 			isa = XCBuildConfiguration;
+			baseConfigurationReference = 6DF849BF3054C751000BB966 /* Local.xcconfig */;
 			buildSettings = {
 				ALWAYS_SEARCH_USER_PATHS = NO;
 				ASSETCATALOG_COMPILER_GENERATE_SWIFT_ASSET_SYMBOL_EXTENSIONS = YES;
@@ -271,6 +282,8 @@
 				CURRENT_PROJECT_VERSION = 1;
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_FILE = "munchmax-Info.plist";
+				INFOPLIST_KEY_CFBundleDisplayName = "";
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
 				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
 				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
@@ -300,6 +313,8 @@
 				CURRENT_PROJECT_VERSION = 1;
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_FILE = "munchmax-Info.plist";
+				INFOPLIST_KEY_CFBundleDisplayName = "";
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
 				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
 				INFOPLIST_KEY_UILaunchScreen_Generation = YES;

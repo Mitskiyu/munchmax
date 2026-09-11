@@ -14,5 +14,6 @@ data/
 # env
 .env
 .env.local
+Local.xcconfig
 
 .DS_Store
