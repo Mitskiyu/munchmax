@@ -11,6 +11,8 @@ import (
 	"time"
 
 	"munchmax/internal/database"
+	"munchmax/internal/restaurant"
+	"munchmax/internal/server"
 )
 
 func main() {
@@ -41,17 +43,12 @@ func run(getenv func(string, string) string) error {
 	}
 	log.Printf("Connected to postgres: %s@%s:%s/%s", pgUser, pgHost, pgPort, pgName)
 
-	s := &http.Server{
-		Addr: addr,
-		Handler: http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-			_, _ = w.Write([]byte("Munchmax!"))
-		}),
-		ReadTimeout:       5 * time.Second,
-		WriteTimeout:      10 * time.Second,
-		ReadHeaderTimeout: 2 * time.Second,
-		IdleTimeout:       120 * time.Second,
-		MaxHeaderBytes:    1 << 20,
+	q := database.New(db)
+	h := server.Handlers{
+		Restaurant: restaurant.NewHandler(restaurant.NewService(q)),
 	}
+
+	s := server.New(addr, h)
 
 	errs := make(chan error, 1)
 	ctx, stop := signal.NotifyContext(context.Background(), syscall.SIGINT, syscall.SIGTERM)
@@ -62,6 +59,8 @@ func run(getenv func(string, string) string) error {
 			errs <- fmt.Errorf("server shut down: %v", err)
 		}
 	}()
+
+	log.Printf("Server listening on %s", addr)
 
 	select {
 	case <-ctx.Done():
