@@ -9,14 +9,13 @@ CREATE TABLE restaurants (
 
     cuisines      TEXT[] NOT NULL DEFAULT '{}',
 
-    street        TEXT,
-    housenumber   TEXT,
-    postcode      TEXT,
-    city          TEXT,
-
-    website       TEXT,
-    phone         TEXT,
-    opening_hours TEXT,
+    street        TEXT NOT NULL DEFAULT '',
+    housenumber   TEXT NOT NULL DEFAULT '',
+    postcode      TEXT NOT NULL DEFAULT '',
+    city          TEXT NOT NULL DEFAULT '',
+    website       TEXT NOT NULL DEFAULT '',
+    phone         TEXT NOT NULL DEFAULT '',
+    opening_hours TEXT NOT NULL DEFAULT '',
 
     lat           DOUBLE PRECISION NOT NULL,
     lon           DOUBLE PRECISION NOT NULL,
