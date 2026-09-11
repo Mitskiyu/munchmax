@@ -2,6 +2,10 @@
 bin/
 tmp/
 
+# swift
+**/xcuserdata/
+**/*.xcuserstate
+
 # dev
 .direnv/
 temp/
