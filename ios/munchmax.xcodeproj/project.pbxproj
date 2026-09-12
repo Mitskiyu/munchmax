@@ -12,6 +12,12 @@
 		6DF849B330549DD3000BB966 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 6DF849AB30549DD3000BB966 /* Assets.xcassets */; };
 		6DF849C03054C751000BB966 /* Local.xcconfig in Resources */ = {isa = PBXBuildFile; fileRef = 6DF849BF3054C751000BB966 /* Local.xcconfig */; };
 		6DF849C43054C799000BB966 /* Local.xcconfig.example in Resources */ = {isa = PBXBuildFile; fileRef = 6DF849C33054C799000BB966 /* Local.xcconfig.example */; };
+		6DF849C730559D51000BB966 /* openapi-generator-config.yaml in Sources */ = {isa = PBXBuildFile; fileRef = 6DF849C530559D51000BB966 /* openapi-generator-config.yaml */; };
+		6DF849C830559D51000BB966 /* openapi.yaml in Sources */ = {isa = PBXBuildFile; fileRef = 6DF849C630559D51000BB966 /* openapi.yaml */; };
+		6DF849CE30559E70000BB966 /* OpenAPIURLSession in Frameworks */ = {isa = PBXBuildFile; productRef = 6DF849CD30559E70000BB966 /* OpenAPIURLSession */; };
+		6DF849D130559E83000BB966 /* OpenAPIRuntime in Frameworks */ = {isa = PBXBuildFile; productRef = 6DF849D030559E83000BB966 /* OpenAPIRuntime */; };
+		6DF849DF3055AA9C000BB966 /* Discovery.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6DF849DC3055A88B000BB966 /* Discovery.swift */; };
+		6DF849EC3055B5E1000BB966 /* Config.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6DF849E93055B0C6000BB966 /* Config.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -23,6 +29,10 @@
 		6DF849BB3054BF43000BB966 /* munchmax-Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist; path = "munchmax-Info.plist"; sourceTree = "<group>"; };
 		6DF849BF3054C751000BB966 /* Local.xcconfig */ = {isa = PBXFileReference; lastKnownFileType = text.xcconfig; path = Local.xcconfig; sourceTree = "<group>"; };
 		6DF849C33054C799000BB966 /* Local.xcconfig.example */ = {isa = PBXFileReference; lastKnownFileType = text; path = Local.xcconfig.example; sourceTree = "<group>"; };
+		6DF849C530559D51000BB966 /* openapi-generator-config.yaml */ = {isa = PBXFileReference; lastKnownFileType = text.yaml; name = "openapi-generator-config.yaml"; path = "../openapi-generator-config.yaml"; sourceTree = "<group>"; };
+		6DF849C630559D51000BB966 /* openapi.yaml */ = {isa = PBXFileReference; lastKnownFileType = text.yaml; name = openapi.yaml; path = ../openapi.yaml; sourceTree = "<group>"; };
+		6DF849DC3055A88B000BB966 /* Discovery.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Discovery.swift; sourceTree = "<group>"; };
+		6DF849E93055B0C6000BB966 /* Config.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Config.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -30,6 +40,8 @@
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				6DF849D130559E83000BB966 /* OpenAPIRuntime in Frameworks */,
+				6DF849CE30559E70000BB966 /* OpenAPIURLSession in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -39,6 +51,10 @@
 		6DF8499430549952000BB966 = {
 			isa = PBXGroup;
 			children = (
+				6DF849E63055AEEC000BB966 /* Core */,
+				6DF849D93055A739000BB966 /* Features */,
+				6DF849C630559D51000BB966 /* openapi.yaml */,
+				6DF849C530559D51000BB966 /* openapi-generator-config.yaml */,
 				6DF849BB3054BF43000BB966 /* munchmax-Info.plist */,
 				6DF849AB30549DD3000BB966 /* Assets.xcassets */,
 				6DF849AC30549DD3000BB966 /* ContentView.swift */,
@@ -63,6 +79,30 @@
 			name = Products;
 			sourceTree = "<group>";
 		};
+		6DF849D93055A739000BB966 /* Features */ = {
+			isa = PBXGroup;
+			children = (
+				6DF849DA3055A745000BB966 /* Discovery */,
+			);
+			path = Features;
+			sourceTree = "<group>";
+		};
+		6DF849DA3055A745000BB966 /* Discovery */ = {
+			isa = PBXGroup;
+			children = (
+				6DF849DC3055A88B000BB966 /* Discovery.swift */,
+			);
+			path = Discovery;
+			sourceTree = "<group>";
+		};
+		6DF849E63055AEEC000BB966 /* Core */ = {
+			isa = PBXGroup;
+			children = (
+				6DF849E93055B0C6000BB966 /* Config.swift */,
+			);
+			path = Core;
+			sourceTree = "<group>";
+		};
 /* End PBXGroup section */
 
 /* Begin PBXNativeTarget section */
@@ -77,9 +117,12 @@
 			buildRules = (
 			);
 			dependencies = (
+				6DF849D330559ECF000BB966 /* PBXTargetDependency */,
 			);
 			name = munchmax;
 			packageProductDependencies = (
+				6DF849CD30559E70000BB966 /* OpenAPIURLSession */,
+				6DF849D030559E83000BB966 /* OpenAPIRuntime */,
 			);
 			productName = munchmax;
 			productReference = 6DF8499D30549952000BB966 /* munchmax.app */;
@@ -110,6 +153,11 @@
 			);
 			mainGroup = 6DF8499430549952000BB966;
 			minimizedProjectReferenceProxies = 1;
+			packageReferences = (
+				6DF849C930559E09000BB966 /* XCRemoteSwiftPackageReference "swift-openapi-generator" */,
+				6DF849CC30559E70000BB966 /* XCRemoteSwiftPackageReference "swift-openapi-urlsession" */,
+				6DF849CF30559E83000BB966 /* XCRemoteSwiftPackageReference "swift-openapi-runtime" */,
+			);
 			preferredProjectObjectVersion = 77;
 			productRefGroup = 6DF8499E30549952000BB966 /* Products */;
 			projectDirPath = "";
@@ -144,12 +192,23 @@
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				6DF849C730559D51000BB966 /* openapi-generator-config.yaml in Sources */,
+				6DF849DF3055AA9C000BB966 /* Discovery.swift in Sources */,
+				6DF849C830559D51000BB966 /* openapi.yaml in Sources */,
 				6DF849B130549DD3000BB966 /* ContentView.swift in Sources */,
 				6DF849B230549DD3000BB966 /* munchmaxApp.swift in Sources */,
+				6DF849EC3055B5E1000BB966 /* Config.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
 /* End PBXSourcesBuildPhase section */
+
+/* Begin PBXTargetDependency section */
+		6DF849D330559ECF000BB966 /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			productRef = 6DF849D230559ECF000BB966 /* OpenAPIGenerator */;
+		};
+/* End PBXTargetDependency section */
 
 /* Begin XCBuildConfiguration section */
 		6DF849A630549953000BB966 /* Debug */ = {
@@ -355,6 +414,51 @@
 			defaultConfigurationName = Release;
 		};
 /* End XCConfigurationList section */
+
+/* Begin XCRemoteSwiftPackageReference section */
+		6DF849C930559E09000BB966 /* XCRemoteSwiftPackageReference "swift-openapi-generator" */ = {
+			isa = XCRemoteSwiftPackageReference;
+			repositoryURL = "https://github.com/apple/swift-openapi-generator";
+			requirement = {
+				kind = upToNextMajorVersion;
+				minimumVersion = 1.13.1;
+			};
+		};
+		6DF849CC30559E70000BB966 /* XCRemoteSwiftPackageReference "swift-openapi-urlsession" */ = {
+			isa = XCRemoteSwiftPackageReference;
+			repositoryURL = "https://github.com/apple/swift-openapi-urlsession";
+			requirement = {
+				kind = upToNextMajorVersion;
+				minimumVersion = 1.3.1;
+			};
+		};
+		6DF849CF30559E83000BB966 /* XCRemoteSwiftPackageReference "swift-openapi-runtime" */ = {
+			isa = XCRemoteSwiftPackageReference;
+			repositoryURL = "https://github.com/apple/swift-openapi-runtime";
+			requirement = {
+				kind = upToNextMajorVersion;
+				minimumVersion = 1.12.1;
+			};
+		};
+/* End XCRemoteSwiftPackageReference section */
+
+/* Begin XCSwiftPackageProductDependency section */
+		6DF849CD30559E70000BB966 /* OpenAPIURLSession */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = 6DF849CC30559E70000BB966 /* XCRemoteSwiftPackageReference "swift-openapi-urlsession" */;
+			productName = OpenAPIURLSession;
+		};
+		6DF849D030559E83000BB966 /* OpenAPIRuntime */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = 6DF849CF30559E83000BB966 /* XCRemoteSwiftPackageReference "swift-openapi-runtime" */;
+			productName = OpenAPIRuntime;
+		};
+		6DF849D230559ECF000BB966 /* OpenAPIGenerator */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = 6DF849C930559E09000BB966 /* XCRemoteSwiftPackageReference "swift-openapi-generator" */;
+			productName = "plugin:OpenAPIGenerator";
+		};
+/* End XCSwiftPackageProductDependency section */
 	};
 	rootObject = 6DF8499530549952000BB966 /* Project object */;
 }
