@@ -45,14 +45,14 @@ paths:
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/error"
+                $ref: "#/components/schemas/errorResponse"
 
         "500":
           description: Unexpected server error
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/error"
+                $ref: "#/components/schemas/errorResponse"
 
 components:
   schemas:
@@ -99,12 +99,12 @@ components:
         opening_hours:
           type: string
 
-    error:
+    errorResponse:
       type: object
       required: [code, message]
       properties:
         code:
           type: string
-          enum: [INVALID_CURSOR, INVALID_LIMIT, INTERNAL]
+          enum: [INVALID_CURSOR, INVALID_LIMIT, INTERNAL_ERROR]
         message:
           type: string
