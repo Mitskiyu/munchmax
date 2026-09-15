@@ -111,9 +111,16 @@ def filter_restaurants(con, districts, out):
                         'Bar', 'Winery', 'Vineyard', 'Brewery', 'Distillery'
                     )
             )) > 0
+            AND NOT EXISTS (
+                SELECT 1
+                FROM places c
+                WHERE c.name = p.name
+                GROUP BY name
+                HAVING COUNT(*) >= 10
+            )
             AND date_closed IS NULL
             AND unresolved_flags IS NULL
-        ) TO $2;
+            ) TO $2;
         """,
         [districts, str(out)],
     )
