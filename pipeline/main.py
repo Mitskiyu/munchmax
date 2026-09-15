@@ -59,6 +59,9 @@ def save_places(con, bbox, out):
             WHERE len(list_filter(
                 fsq_category_labels,
                 lambda x : starts_with(x, 'Dining and Drinking')
+                AND split_part(x, ' > ', 2) NOT IN (
+                    'Bar', 'Winery', 'Vineyard', 'Brewery', 'Distillery'
+                )
             )) > 0
         ) TO '{out}.parquet';
         """)
