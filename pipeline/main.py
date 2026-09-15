@@ -14,6 +14,7 @@ def run():
     fsq_token = os.environ["FSQ_TOKEN"]
 
     data_dir = Path(__file__).resolve().parent.parent / "data"
+    os.makedirs(data_dir, exist_ok=True)
 
     with duckdb.connect() as con:
         attach_places(con, fsq_token)
