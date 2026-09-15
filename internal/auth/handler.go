@@ -2,6 +2,8 @@ package auth
 
 import (
 	"encoding/json"
+	"errors"
+	"log"
 	"net/http"
 )
 
@@ -28,9 +30,14 @@ func (h *Handler) SignUp(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// TODO: specific error responses
 	if err := h.service.SignUp(req.Email, req.Password, req.Username); err != nil {
-		http.Error(w, "INVALID_REQUEST", http.StatusBadRequest)
+		if errors.Is(err, ErrValidation) {
+			http.Error(w, "INVALID_REQUEST", http.StatusBadRequest)
+			return
+		}
+
+		log.Printf("%v at %s", err, r.URL.Path)
+		http.Error(w, "INTERNAL_SERVER_ERROR", http.StatusInternalServerError)
 		return
 	}
 
