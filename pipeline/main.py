@@ -56,6 +56,10 @@ def save_places(con, bbox, out):
         COPY (
             SELECT * EXCLUDE(geom)
             FROM places
+            WHERE len(list_filter(
+                fsq_category_labels,
+                lambda x : starts_with(x, 'Dining and Drinking')
+            )) > 0
         ) TO '{out}.parquet';
         """)
 
