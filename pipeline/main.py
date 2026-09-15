@@ -63,6 +63,8 @@ def save_places(con, bbox, out):
                     'Bar', 'Winery', 'Vineyard', 'Brewery', 'Distillery'
                 )
             )) > 0
+            AND date_closed IS NULL
+            AND unresolved_flags IS NULL
         ) TO '{out}.parquet';
         """)
 
