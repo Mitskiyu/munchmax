@@ -1,5 +1,7 @@
 package auth
 
+import "log"
+
 type Service interface {
 	SignUp(email, password, username string) error
 }
@@ -23,5 +25,8 @@ func (s *service) SignUp(email, password, username string) error {
 		return err
 	}
 
-	return nil // TODO: hash, store
+	password = hashPassword(password)
+	log.Println("hashed:", password) // TODO: remove
+
+	return nil //TODO: store
 }
