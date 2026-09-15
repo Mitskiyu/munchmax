@@ -24,10 +24,15 @@ def run():
         "Yau Tsim Mong District",
     ]
 
-    with duckdb.connect() as con:
+    with duckdb.connect(data_dir / "hk.db") as con:
         save_places(con, fsq_token)
-        parquet = filter_restaurants(con, data_dir / "hk.parquet")
-        filter_districts(con, kowloon, parquet)
+        out = filter_restaurants(con, kowloon, data_dir / "hk.parquet")
+        con.sql(f"""
+            SELECT COUNT(*) AS n, district
+            FROM '{out}'
+            GROUP BY district
+            ORDER BY n DESC;
+        """).show()
         # fetch_sources(con, client)
 
 
@@ -87,13 +92,19 @@ def save_places(con, token):
     )
 
 
-def filter_restaurants(con, out):
+def filter_restaurants(con, districts, out):
     con.execute(
         """
         COPY (
-            SELECT *
-            FROM places
-            WHERE len(list_filter(
+            SELECT
+                p.*,
+                d.district,
+                d."地區"
+            FROM places AS p
+            JOIN districts AS d
+                ON ST_Within(ST_Point(p.longitude, p.latitude), d.geom)
+            WHERE list_contains($1, d.district)
+            AND len(list_filter(
                 fsq_category_labels,
                 lambda x : starts_with(x, 'Dining and Drinking')
                     AND split_part(x, ' > ', 2) NOT IN (
@@ -102,29 +113,12 @@ def filter_restaurants(con, out):
             )) > 0
             AND date_closed IS NULL
             AND unresolved_flags IS NULL
-        ) TO $1;
+        ) TO $2;
         """,
-        [str(out)],
+        [districts, str(out)],
     )
 
     return out
-
-
-def filter_districts(con, districts, parquet):
-    con.sql(
-        f"""
-        SELECT
-            d.district,
-            COUNT(*) AS num_places
-        FROM '{parquet}' AS p
-        JOIN districts AS d
-            ON ST_Within(ST_Point(p.longitude, p.latitude), d.geom)
-        WHERE list_contains($1, d.district)
-        GROUP BY d.district
-        ORDER BY num_places DESC;
-        """,
-        params=[districts],
-    ).show()
 
 
 # def fetch_sources(con, client):
