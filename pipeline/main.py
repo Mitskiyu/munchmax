@@ -98,8 +98,8 @@ def filter_restaurants(con, districts, out):
         COPY (
             SELECT
                 p.*,
-                d.district,
-                d."地區"
+                d.district AS district,
+                d."地區" AS district_zh
             FROM places AS p
             JOIN districts AS d
                 ON ST_Within(ST_Point(p.longitude, p.latitude), d.geom)
