@@ -1,8 +1,19 @@
+import json
 import os
-import duckdb
-
-from dotenv import load_dotenv
+import time
 from pathlib import Path
+
+import duckdb
+from dotenv import load_dotenv
+from tavily import (
+    TavilyClient,
+)
+from tavily.errors import (
+    BadRequestError,
+    ForbiddenError,
+    InvalidAPIKeyError,
+    UsageLimitExceededError,
+)
 
 
 def main():
@@ -12,28 +23,38 @@ def main():
 
 def run():
     fsq_token = os.environ["FSQ_TOKEN"]
+    tavily_key = os.environ["TAVILY_KEY"]
 
     data_dir = Path(__file__).resolve().parent.parent / "data"
     data_dir.mkdir(parents=True, exist_ok=True)
 
-    kowloon = [
-        "Kowloon City District",
-        "Kwun Tong District",
-        "Sham Shui Po District",
-        "Wong Tai Sin District",
-        "Yau Tsim Mong District",
-    ]
+    district = ["Sham Shui Po District"]
+    locality_zh = {
+        "mei foo": "美孚",
+        "lai chi kok": "荔枝角",
+        "cheung sha wan": "長沙灣",
+        "sham shui po": "深水埗",
+        "shek kip mei": "石硤尾",
+        "yau yat tsuen": "又一村",
+        "tai wo ping": "大窩坪",
+        "stonecutters island": "昂船洲",
+    }
 
     with duckdb.connect(data_dir / "hk.db") as con:
         save_places(con, fsq_token)
-        out = filter_restaurants(con, kowloon, data_dir / "hk.parquet")
+        parquet = filter_restaurants(con, district, data_dir / "hk.parquet")
         con.sql(f"""
             SELECT COUNT(*) AS n, district
-            FROM '{out}'
+            FROM '{parquet}'
             GROUP BY district
             ORDER BY n DESC;
         """).show()
-        # fetch_sources(con, client)
+
+        cache_dir = data_dir / "cache"
+        cache_dir.mkdir(exist_ok=True)
+
+        client = TavilyClient(tavily_key)
+        fetch_sources(cache_dir, con, parquet, client, locality_zh, 1)
 
 
 def save_places(con, token):
@@ -128,7 +149,81 @@ def filter_restaurants(con, districts, out):
     return out
 
 
-# def fetch_sources(con, client):
+def fetch_sources(dir, con, parquet, client, transl, limit=None):
+    if limit is None:
+        rows = con.execute(f"""
+            SELECT fsq_place_id, name, locality, district_zh
+            FROM '{parquet}'
+        """).fetchall()
+    else:
+        rows = con.execute(
+            f"""
+            SELECT fsq_place_id, name, locality, district_zh
+            FROM '{parquet}'
+            LIMIT $1
+        """,
+            [limit],
+        ).fetchall()
+
+    for id, name, local, dist in rows:
+        save = dir / f"{id}.json"
+        if save.exists():
+            continue
+
+        if local is not None:
+            local_clean = local.strip().strip(",").lower()
+            if local_clean in transl:
+                local_clean = transl[local_clean]
+            elif any(
+                "\u4e00" <= c <= "\u9fff" or "\u3400" <= c <= "\u4dbf"
+                for c in local_clean
+            ):
+                pass  # keep cjk
+            else:
+                local_clean = dist
+        else:
+            local_clean = dist
+
+        query = f"{name} {local_clean}"
+
+        resp = None
+        for attempt in range(5):
+            try:
+                resp = client.search(
+                    query=query,
+                    include_answer="advanced",
+                    search_depth="basic",
+                    max_results=20,
+                    include_published_date=True,
+                    include_images=True,
+                    include_image_descriptions=True,
+                    include_usage=True,
+                    chunks_per_source=5,
+                )
+                break
+
+            except UsageLimitExceededError:
+                if attempt == 4:
+                    raise
+                time.sleep(2**attempt)
+
+            except (InvalidAPIKeyError, ForbiddenError, BadRequestError):
+                raise
+
+            except Exception as e:
+                if attempt == 4:
+                    print(f"failed to get sources for {id}: {e}")
+                    resp = None
+                    break
+
+        if resp is None:
+            continue
+
+        with open(save, "w", encoding="utf-8") as f:
+            json.dump(resp, f, ensure_ascii=False, indent=2)
+
+        print(f"wrote: {save}")
+
 
 if __name__ == "__main__":
     main()
