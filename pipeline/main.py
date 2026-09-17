@@ -5,13 +5,12 @@ from pathlib import Path
 
 import duckdb
 from dotenv import load_dotenv
-from tavily import (
-    TavilyClient,
-)
+from tavily import TavilyClient
 from tavily.errors import (
     BadRequestError,
     ForbiddenError,
     InvalidAPIKeyError,
+    MissingAPIKeyError,
     UsageLimitExceededError,
 )
 
@@ -41,20 +40,30 @@ def run():
     }
 
     with duckdb.connect(data_dir / "hk.db") as con:
-        save_places(con, fsq_token)
-        parquet = filter_restaurants(con, district, data_dir / "hk.parquet")
-        con.sql(f"""
-            SELECT COUNT(*) AS n, district
-            FROM '{parquet}'
-            GROUP BY district
-            ORDER BY n DESC;
-        """).show()
+        parquet = data_dir / "hk.parquet"
+        if not parquet.exists():
+            save_places(con, fsq_token)
+            filter_restaurants(con, district, parquet)
+            con.sql(f"""
+                SELECT COUNT(*) AS n, district
+                FROM '{parquet}'
+                GROUP BY district
+                ORDER BY n DESC;
+            """).show()
 
         cache_dir = data_dir / "cache"
         cache_dir.mkdir(exist_ok=True)
 
+        limit = None
+        rows = con.execute(f"""
+            SELECT fsq_place_id, name, locality, district_zh
+            FROM '{parquet}'
+        """).fetchall()
+        if limit:
+            rows = rows[:limit]
+
         client = TavilyClient(tavily_key)
-        fetch_sources(cache_dir, con, parquet, client, locality_zh, 1)
+        fetch_sources(cache_dir, client, rows, locality_zh)
 
 
 def save_places(con, token):
@@ -146,25 +155,8 @@ def filter_restaurants(con, districts, out):
         [districts, str(out)],
     )
 
-    return out
 
-
-def fetch_sources(dir, con, parquet, client, transl, limit=None):
-    if limit is None:
-        rows = con.execute(f"""
-            SELECT fsq_place_id, name, locality, district_zh
-            FROM '{parquet}'
-        """).fetchall()
-    else:
-        rows = con.execute(
-            f"""
-            SELECT fsq_place_id, name, locality, district_zh
-            FROM '{parquet}'
-            LIMIT $1
-        """,
-            [limit],
-        ).fetchall()
-
+def fetch_sources(dir, client, rows, transl):
     for id, name, local, dist in rows:
         save = dir / f"{id}.json"
         if save.exists():
@@ -177,7 +169,7 @@ def fetch_sources(dir, con, parquet, client, transl, limit=None):
             elif any(
                 "\u4e00" <= c <= "\u9fff" or "\u3400" <= c <= "\u4dbf"
                 for c in local_clean
-            ):
+            ) and not local_clean.endswith("區"):
                 pass  # keep cjk
             else:
                 local_clean = dist
@@ -202,12 +194,13 @@ def fetch_sources(dir, con, parquet, client, transl, limit=None):
                 )
                 break
 
-            except UsageLimitExceededError:
-                if attempt == 4:
-                    raise
-                time.sleep(2**attempt)
-
-            except (InvalidAPIKeyError, ForbiddenError, BadRequestError):
+            except (
+                UsageLimitExceededError,
+                ForbiddenError,
+                BadRequestError,
+                InvalidAPIKeyError,
+                MissingAPIKeyError,
+            ):
                 raise
 
             except Exception as e:
@@ -215,12 +208,15 @@ def fetch_sources(dir, con, parquet, client, transl, limit=None):
                     print(f"failed to get sources for {id}: {e}")
                     resp = None
                     break
+                time.sleep(2**attempt)
 
         if resp is None:
             continue
 
         with open(save, "w", encoding="utf-8") as f:
-            json.dump(resp, f, ensure_ascii=False, indent=2)
+            json.dump(
+                {"query": query, "response": resp}, f, ensure_ascii=False, indent=2
+            )
 
         print(f"wrote: {save}")
 
