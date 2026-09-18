@@ -1,11 +1,11 @@
 import json
 import os
-import time
+import asyncio
 from pathlib import Path
 
 import duckdb
 from dotenv import load_dotenv
-from tavily import TavilyClient
+from tavily import AsyncTavilyClient
 from tavily.errors import (
     BadRequestError,
     ForbiddenError,
@@ -62,8 +62,8 @@ def run():
         if limit:
             rows = rows[:limit]
 
-        client = TavilyClient(tavily_key)
-        fetch_sources(cache_dir, client, rows, locality_zh)
+        client = AsyncTavilyClient(tavily_key)
+        asyncio.run(fetch_sources(cache_dir, client, rows, locality_zh))
 
 
 def save_places(con, token):
@@ -156,32 +156,33 @@ def filter_restaurants(con, districts, out):
     )
 
 
-def fetch_sources(dir, client, rows, transl):
-    for id, name, local, dist in rows:
-        save = dir / f"{id}.json"
-        if save.exists():
-            continue
+async def fetch_source(dir, client, sem, row, transl):
+    id, name, local, dist = row
 
-        if local is not None:
-            local_clean = local.strip().strip(",").lower()
-            if local_clean in transl:
-                local_clean = transl[local_clean]
-            elif any(
-                "\u4e00" <= c <= "\u9fff" or "\u3400" <= c <= "\u4dbf"
-                for c in local_clean
-            ) and not local_clean.endswith("區"):
-                pass  # keep cjk
-            else:
-                local_clean = dist
+    save = dir / f"{id}.json"
+    if save.exists():
+        return
+
+    if local is not None:
+        local_clean = local.strip().strip(",").lower()
+        if local_clean in transl:
+            local_clean = transl[local_clean]
+        elif any(
+            "\u4e00" <= c <= "\u9fff" or "\u3400" <= c <= "\u4dbf" for c in local_clean
+        ) and not local_clean.endswith("區"):
+            pass  # keep cjk
         else:
             local_clean = dist
+    else:
+        local_clean = dist
 
-        query = f"{name} {local_clean}"
+    query = f"{name} {local_clean}"
 
+    async with sem:
         resp = None
         for attempt in range(5):
             try:
-                resp = client.search(
+                resp = await client.search(
                     query=query,
                     include_answer="advanced",
                     search_depth="basic",
@@ -208,15 +209,22 @@ def fetch_sources(dir, client, rows, transl):
                     print(f"failed to get sources for {id}: {e}")
                     resp = None
                     break
-                time.sleep(2**attempt)
+                await asyncio.sleep(2**attempt)
 
-        if resp is None:
-            continue
+    if resp is None:
+        return
 
-        with open(save, "w", encoding="utf-8") as f:
-            json.dump(resp, f, ensure_ascii=False, indent=2)
+    with open(save, "w", encoding="utf-8") as f:
+        json.dump(resp, f, ensure_ascii=False, indent=2)
 
-        print(f"wrote: {save}")
+    print(f"wrote: {save}")
+
+
+async def fetch_sources(dir, client, rows, transl):
+    sem = asyncio.Semaphore(10)
+
+    tasks = [fetch_source(dir, client, sem, row, transl) for row in rows]
+    await asyncio.gather(*tasks)
 
 
 if __name__ == "__main__":
