@@ -214,9 +214,7 @@ def fetch_sources(dir, client, rows, transl):
             continue
 
         with open(save, "w", encoding="utf-8") as f:
-            json.dump(
-                {"query": query, "response": resp}, f, ensure_ascii=False, indent=2
-            )
+            json.dump(resp, f, ensure_ascii=False, indent=2)
 
         print(f"wrote: {save}")
 
