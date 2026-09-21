@@ -56,14 +56,19 @@ def run():
 
         limit = None
         rows = con.execute(f"""
-            SELECT fsq_place_id, name, locality, district_zh
+            SELECT fsq_place_id, name, locality, district_zh, address
             FROM '{parquet}'
         """).fetchall()
         if limit:
             rows = rows[:limit]
 
-        client = AsyncTavilyClient(tavily_key)
-        asyncio.run(fetch_sources(cache_dir, client, rows, locality_zh))
+    client = AsyncTavilyClient(tavily_key)
+    asyncio.run(fetch_sources(cache_dir, client, rows, locality_zh))
+
+    for row in rows:
+        body = build_payload(row, cache_dir)
+
+    print(body)
 
 
 def save_places(con, token):
@@ -157,7 +162,7 @@ def filter_restaurants(con, districts, out):
 
 
 async def fetch_source(dir, client, sem, row, transl):
-    id, name, local, dist = row
+    id, name, local, dist, _ = row
 
     save = dir / f"{id}.json"
     if save.exists():
@@ -225,6 +230,52 @@ async def fetch_sources(dir, client, rows, transl):
 
     tasks = [fetch_source(dir, client, sem, row, transl) for row in rows]
     await asyncio.gather(*tasks)
+
+
+def build_payload(row, dir):
+    id, name, _, district, address = row
+
+    file = dir / f"{id}.json"
+    if not file.exists():
+        return None
+
+    with open(file) as f:
+        data = json.load(f)
+
+    lines = [
+        f"NAME: {name}",
+        f"DISTRICT: {district}",
+    ]
+    if address:
+        lines.append(f"ADDRESS: {address}")
+    lines.append("")
+    lines.append("SOURCES:")
+
+    n = 0
+    for res in data["results"]:
+        url = res.get("url") or ""
+        content = res.get("content") or ""
+        if not content:
+            continue
+
+        title = res.get("title") or ""
+        # tavily repeats the title
+        if content.startswith(f"Title: {title}"):
+            content = content[len(f"Title: {title}") :].lstrip()
+
+        n += 1
+        if n > 1:
+            lines.append("")
+        lines.append(f"[{n}] {title}")
+        lines.append(url)
+        lines.append(content)
+        if res.get("published_date"):
+            lines.append(f"({res['published_date']})")
+
+    if n == 0:
+        return None
+
+    return "\n".join(lines)
 
 
 if __name__ == "__main__":
