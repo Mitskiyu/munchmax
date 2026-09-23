@@ -1,13 +1,18 @@
+import asyncio
 import json
 import os
-import asyncio
 from pathlib import Path
 
 import duckdb
 from dotenv import load_dotenv
-from tavily import AsyncTavilyClient
-from tavily.errors import (
+from openai import (
+    AsyncOpenAI,
+    AuthenticationError,
     BadRequestError,
+)
+from tavily import AsyncTavilyClient
+from tavily.errors import BadRequestError as TavilyBadRequestError
+from tavily.errors import (
     ForbiddenError,
     InvalidAPIKeyError,
     MissingAPIKeyError,
@@ -23,6 +28,7 @@ def main():
 def run():
     fsq_token = os.environ["FSQ_TOKEN"]
     tavily_key = os.environ["TAVILY_KEY"]
+    nebius_key = os.environ["NEBIUS_KEY"]
 
     data_dir = Path(__file__).resolve().parent.parent / "data"
     data_dir.mkdir(parents=True, exist_ok=True)
@@ -51,8 +57,8 @@ def run():
                 ORDER BY n DESC;
             """).show()
 
-        cache_dir = data_dir / "cache"
-        cache_dir.mkdir(exist_ok=True)
+        source_dir = data_dir / "cache" / "sources"
+        source_dir.mkdir(parents=True, exist_ok=True)
 
         limit = None
         rows = con.execute(f"""
@@ -62,13 +68,29 @@ def run():
         if limit:
             rows = rows[:limit]
 
-    client = AsyncTavilyClient(tavily_key)
-    asyncio.run(fetch_sources(cache_dir, client, rows, locality_zh))
+    profile_dir = data_dir / "cache" / "profiles"
+    profile_dir.mkdir(parents=True, exist_ok=True)
 
-    for row in rows:
-        body = build_payload(row, cache_dir)
+    tavily_client = AsyncTavilyClient(tavily_key)
+    asyncio.run(fetch_sources(source_dir, tavily_client, rows, locality_zh))
 
-    print(body)
+    nebius_client = AsyncOpenAI(
+        base_url="https://api.tokenfactory.us-central1.nebius.com/v1/",
+        api_key=nebius_key,
+    )
+
+    with open("nebius/prompt.md") as f:
+        prompt = f.read()
+    with open("nebius/schema.json") as f:
+        schema = json.load(f)
+
+    prompt = (
+        prompt + "\n\n ### Schema" + json.dumps(schema, ensure_ascii=False, indent=2)
+    )
+
+    asyncio.run(
+        write_profiles(source_dir, profile_dir, nebius_client, prompt, schema, rows)
+    )
 
 
 def save_places(con, token):
@@ -203,7 +225,7 @@ async def fetch_source(dir, client, sem, row, transl):
             except (
                 UsageLimitExceededError,
                 ForbiddenError,
-                BadRequestError,
+                TavilyBadRequestError,
                 InvalidAPIKeyError,
                 MissingAPIKeyError,
             ):
@@ -278,6 +300,75 @@ def build_payload(row, dir):
         return None
 
     return "\n".join(lines)
+
+
+async def write_profile(dir, client, sem, prompt, schema, id, payload):
+    save = dir / f"{id}.json"
+    if save.exists():
+        return
+
+    async with sem:
+        resp = None
+        for attempt in range(5):
+            try:
+                resp = await client.chat.completions.create(
+                    model="nvidia/Nemotron-3-Ultra-550b-a55b",
+                    messages=[
+                        {"role": "system", "content": prompt},
+                        {"role": "user", "content": payload},
+                    ],
+                    max_tokens=32000,
+                    temperature=0.2,
+                    response_format={"type": "json_schema", "json_schema": schema},
+                )
+                break
+
+            except (AuthenticationError, BadRequestError):
+                raise
+
+            except Exception as e:
+                if attempt == 4:
+                    print(f"failed to write profile for {id}: {e}")
+                    resp = None
+                    break
+                await asyncio.sleep(2**attempt)
+
+        if resp is None:
+            return
+
+        msg = resp.choices[0].message
+        if msg.refusal:
+            print(f"refused profile: {id}")
+            return
+
+        try:
+            data = json.loads(msg.content)
+        except json.JSONDecodeError:
+            print(f"failed to decode json: {id}")
+            return
+
+        if resp.choices[0].finish_reason == "length":
+            print(f"truncated profile: {id}")
+            return
+
+        with open(save, "w", encoding="utf-8") as f:
+            json.dump(data, f, ensure_ascii=False, indent=2)
+
+        print(f"wrote: {save}")
+
+
+async def write_profiles(source_dir, profile_dir, client, prompt, schema, rows):
+    sem = asyncio.Semaphore(10)
+
+    tasks = [(row[0], build_payload(row, source_dir)) for row in rows]
+
+    await asyncio.gather(
+        *[
+            write_profile(profile_dir, client, sem, prompt, schema, id, payload)
+            for id, payload in tasks
+            if payload is not None
+        ]
+    )
 
 
 if __name__ == "__main__":

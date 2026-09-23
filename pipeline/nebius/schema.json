@@ -1,0 +1,60 @@
+{
+  "name": "restaurant_profile",
+  "strict": true,
+  "schema": {
+    "type": "object",
+    "properties": {
+      "is_match": { "type": "boolean" },
+      "match_evidence": { "type": ["string", "null"] },
+      "answers": {
+        "type": "array",
+        "maxItems": 5,
+        "items": {
+          "type": "object",
+          "properties": {
+            "prompt": {
+              "type": "string",
+              "enum": [
+                "best_dish",
+                "what_to_order_first",
+                "order_this_if_its_your_second_time",
+                "order_this_not_that",
+                "what_to_skip",
+                "known_for",
+                "portion_size",
+                "value_for_money",
+                "worth_the_queue",
+                "wait_time",
+                "busy",
+                "need_to_book",
+                "opening_hours",
+                "best_time",
+                "breakfast",
+                "service",
+                "how_old",
+                "cash_only",
+                "share_table",
+                "getting_there",
+                "spice_level",
+                "drinks",
+                "room_vibe"
+              ]
+            },
+            "text": {
+              "type": "string"
+            },
+            "source_url": { "type": "string" }
+          },
+          "required": ["prompt", "text", "source_url"],
+          "additionalProperties": false
+        }
+      },
+      "price_level": {
+        "type": ["integer", "null"],
+        "enum": [1, 2, 3, 4, null]
+      }
+    },
+    "required": ["is_match", "match_evidence", "answers", "price_level"],
+    "additionalProperties": false
+  }
+}
