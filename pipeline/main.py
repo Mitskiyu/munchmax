@@ -233,7 +233,7 @@ async def fetch_sources(dir, client, rows, transl):
 
 
 def build_payload(row, dir):
-    id, name, _, district, address = row
+    id, name, locality, district, address = row
 
     file = dir / f"{id}.json"
     if not file.exists():
@@ -242,12 +242,14 @@ def build_payload(row, dir):
     with open(file) as f:
         data = json.load(f)
 
-    lines = [
-        f"NAME: {name}",
-        f"DISTRICT: {district}",
-    ]
+    lines = [f"NAME: {name}"]
+
+    area = locality or district
+    if area:
+        lines.append(f"AREA: {area}")
     if address:
         lines.append(f"ADDRESS: {address}")
+
     lines.append("")
     lines.append("SOURCES:")
 
