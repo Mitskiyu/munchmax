@@ -3,7 +3,9 @@ import json
 import os
 from pathlib import Path
 
+import boto3
 import duckdb
+from botocore.exceptions import ClientError
 from dotenv import load_dotenv
 from openai import (
     AsyncOpenAI,
@@ -29,6 +31,7 @@ def run():
     fsq_token = os.environ["FSQ_TOKEN"]
     tavily_key = os.environ["TAVILY_KEY"]
     nebius_key = os.environ["NEBIUS_KEY"]
+    bucket = os.environ["S3_BUCKET"]
 
     data_dir = Path(__file__).resolve().parent.parent / "data"
     data_dir.mkdir(parents=True, exist_ok=True)
@@ -57,9 +60,6 @@ def run():
                 ORDER BY n DESC;
             """).show()
 
-        source_dir = data_dir / "store" / "sources"
-        source_dir.mkdir(parents=True, exist_ok=True)
-
         limit = None
         rows = con.execute(f"""
             SELECT fsq_place_id, name, locality, district_zh, address
@@ -68,13 +68,13 @@ def run():
         if limit:
             rows = rows[:limit]
 
-    profile_dir = data_dir / "store" / "profiles"
-    profile_dir.mkdir(parents=True, exist_ok=True)
+    s3 = boto3.client("s3")
+    done_sources = existing_ids(s3, bucket, "sources/")
 
-    tavily_client = AsyncTavilyClient(tavily_key)
-    asyncio.run(fetch_sources(source_dir, tavily_client, rows, locality_zh))
+    tavily = AsyncTavilyClient(tavily_key)
+    asyncio.run(fetch_sources(s3, bucket, tavily, rows, done_sources, locality_zh))
 
-    nebius_client = AsyncOpenAI(
+    nebius = AsyncOpenAI(
         base_url="https://api.tokenfactory.us-central1.nebius.com/v1/",
         api_key=nebius_key,
     )
@@ -88,8 +88,12 @@ def run():
         prompt + "\n\n ### Schema" + json.dumps(schema, ensure_ascii=False, indent=2)
     )
 
+    done_sources = existing_ids(s3, bucket, "sources/")
+    done_profiles = existing_ids(s3, bucket, "profiles/")
     asyncio.run(
-        write_profiles(source_dir, profile_dir, nebius_client, prompt, schema, rows)
+        write_profiles(
+            s3, bucket, nebius, prompt, schema, rows, done_sources, done_profiles
+        )
     )
 
 
@@ -183,12 +187,31 @@ def filter_restaurants(con, districts, out):
     )
 
 
-async def fetch_source(dir, client, sem, row, transl):
-    id, name, local, dist, _ = row
+def existing_ids(s3, bucket, prefix):
+    ids = set()
+    paginator = s3.get_paginator("list_objects_v2")
+    for page in paginator.paginate(Bucket=bucket, Prefix=prefix):
+        for obj in page.get("Contents", []):
+            ids.add(obj["Key"].removeprefix(prefix).removesuffix(".json"))
+    return ids
 
-    save = dir / f"{id}.json"
-    if save.exists():
-        return
+
+def bucket_upload(s3, bucket, key, data):
+    try:
+        s3.put_object(
+            Bucket=bucket,
+            Key=key,
+            Body=json.dumps(data, ensure_ascii=False, indent=2).encode("utf-8"),
+        )
+    except ClientError as e:
+        print(f"failed to upload {key}: {e}")
+        return False
+
+    return True
+
+
+async def fetch_source(s3, bucket, tavily, sem, row, transl):
+    id, name, local, dist, _ = row
 
     if local is not None:
         local_clean = local.strip().strip(",").lower()
@@ -209,7 +232,7 @@ async def fetch_source(dir, client, sem, row, transl):
         resp = None
         for attempt in range(5):
             try:
-                resp = await client.search(
+                resp = await tavily.search(
                     query=query,
                     include_answer="advanced",
                     search_depth="basic",
@@ -241,31 +264,33 @@ async def fetch_source(dir, client, sem, row, transl):
     if resp is None:
         return
 
-    with open(save, "w", encoding="utf-8") as f:
-        json.dump(resp, f, ensure_ascii=False, indent=2)
+    ok = await asyncio.to_thread(bucket_upload, s3, bucket, f"sources/{id}.json", resp)
+    if ok:
+        print(f"wrote: {id}.json to {bucket}")
 
-    print(f"wrote: {save}")
 
-
-async def fetch_sources(dir, client, rows, transl):
+async def fetch_sources(s3, bucket, client, rows, done, transl):
     sem = asyncio.Semaphore(10)
 
-    tasks = [fetch_source(dir, client, sem, row, transl) for row in rows]
+    tasks = [
+        fetch_source(s3, bucket, client, sem, row, transl)
+        for row in rows
+        if row[0] not in done
+    ]
     await asyncio.gather(*tasks)
 
 
-def build_payload(row, dir):
+def build_payload(s3, bucket, row):
     id, name, locality, district, address = row
 
-    file = dir / f"{id}.json"
-    if not file.exists():
+    try:
+        obj = s3.get_object(Bucket=bucket, Key=f"sources/{id}.json")
+    except ClientError:
         return None
 
-    with open(file) as f:
-        data = json.load(f)
+    data = json.loads(obj["Body"].read())
 
     lines = [f"NAME: {name}"]
-
     area = locality or district
     if area:
         lines.append(f"AREA: {area}")
@@ -302,9 +327,11 @@ def build_payload(row, dir):
     return "\n".join(lines)
 
 
-async def write_profile(dir, client, sem, prompt, schema, id, payload):
-    save = dir / f"{id}.json"
-    if save.exists():
+async def write_profile(s3, bucket, client, sem, prompt, schema, row):
+    id = row[0]
+
+    payload = await asyncio.to_thread(build_payload, s3, bucket, row)
+    if payload is None:
         return
 
     async with sem:
@@ -351,24 +378,25 @@ async def write_profile(dir, client, sem, prompt, schema, id, payload):
             print(f"truncated profile: {id}")
             return
 
-        with open(save, "w", encoding="utf-8") as f:
-            json.dump(data, f, ensure_ascii=False, indent=2)
+        ok = await asyncio.to_thread(
+            bucket_upload, s3, bucket, f"profiles/{id}.json", data
+        )
+        if ok:
+            print(f"wrote: profiles/{id}.json")
 
-        print(f"wrote: {save}")
 
-
-async def write_profiles(source_dir, profile_dir, client, prompt, schema, rows):
+async def write_profiles(
+    s3, bucket, client, prompt, schema, rows, done_sources, done_profiles
+):
     sem = asyncio.Semaphore(10)
 
-    tasks = [(row[0], build_payload(row, source_dir)) for row in rows]
+    tasks = [
+        write_profile(s3, bucket, client, sem, prompt, schema, row)
+        for row in rows
+        if row[0] in done_sources and row[0] not in done_profiles
+    ]
 
-    await asyncio.gather(
-        *[
-            write_profile(profile_dir, client, sem, prompt, schema, id, payload)
-            for id, payload in tasks
-            if payload is not None
-        ]
-    )
+    await asyncio.gather(*tasks)
 
 
 if __name__ == "__main__":

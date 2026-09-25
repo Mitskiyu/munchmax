@@ -3,6 +3,7 @@ name = "pipeline"
 version = "0.1.0"
 requires-python = ">=3.9"
 dependencies = [
+    "boto3>=1.42.97",
     "duckdb>=1.4.5",
     "openai>=2.48.0",
     "python-dotenv>=1.2.1",
