@@ -57,7 +57,7 @@ def run():
                 ORDER BY n DESC;
             """).show()
 
-        source_dir = data_dir / "cache" / "sources"
+        source_dir = data_dir / "store" / "sources"
         source_dir.mkdir(parents=True, exist_ok=True)
 
         limit = None
@@ -68,7 +68,7 @@ def run():
         if limit:
             rows = rows[:limit]
 
-    profile_dir = data_dir / "cache" / "profiles"
+    profile_dir = data_dir / "store" / "profiles"
     profile_dir.mkdir(parents=True, exist_ok=True)
 
     tavily_client = AsyncTavilyClient(tavily_key)
